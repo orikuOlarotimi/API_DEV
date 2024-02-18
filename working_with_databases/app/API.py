@@ -30,22 +30,6 @@ while True:
         sleep(2)
 
 
-my_post = [{"title": "foods", "content": "i love cooking", "id": 1, },
-           {"title": "nigerian food", "content": "i love nigerian foods", "id": 2}]
-
-
-def find_post(id):
-    for p in my_post:
-        if p['id'] == id:
-            return p
-
-
-def find_index(id):
-    for i, p in enumerate(my_post):
-        if p['id'] == id:
-            return i
-
-
 @app.route("/")
 def greet():
     return {"message": "hello world!"}
@@ -81,24 +65,24 @@ def get_post(id):
 
 @app.route("/posts/<int:id>", methods=['DELETE'])
 def del_post(id):
-    index = find_index(id)
-    if index is None:  # Check explicitly for None
+    cursor.execute(""" DELETE FROM post WHERE id = %s RETURNING *""", (id,))
+    deleted_post = cursor.fetchone()
+    conn.commit()
+    if deleted_post is None:
         return jsonify({"message": f"post not found with id: {id}"}), 404
-    my_post.pop(index)
-    return jsonify({"message": "successful"}), 204
+    return jsonify({"message": f"{deleted_post}, post deleted sucessfully"}), 204
 
 
 @app.route("/update/<int:id>", methods=["PUT"])
 def update(id):
     data = request.get_json()
     scheme = Post(**data)
-    index = find_index(id)
-    if index is None:  # Check explicitly for None
+    cursor.execute(""" UPDATE post SET title = %s, content = %s, published = %s WHERE id = %s RETURNING * """, (scheme.title, scheme.content, scheme.published, id,))
+    updated_post = cursor.fetchone()
+    conn.commit()
+    if updated_post is None:
         return jsonify({"message": f"post not found with id: {id}"}), 404
-    post_dict = scheme.dict()
-    post_dict['id'] = id
-    my_post[index] = post_dict
-    return {"message": "sucessful"}
+    return jsonify({"message": updated_post})
 
 
 if __name__ == '__main__':
